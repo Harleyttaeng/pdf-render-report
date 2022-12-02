@@ -1,104 +1,30 @@
-import { Button, useToast } from '@apideck/components'
-import { Connection, File, FilePicker } from '@apideck/file-picker'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useState } from 'react'
+import { Button } from '@apideck/components'
 
-import CodeBlock from 'components/CodeBlock'
 import Layout from '../components/Layout'
 import { Session } from 'types/Session'
 import { applySession } from 'next-session'
 import camelCaseKeys from 'camelcase-keys'
 import { decode } from 'jsonwebtoken'
-import { useRouter } from 'next/router'
-import { useSession } from 'utils/useSession'
 
 // If your project does NOT use TailwindCSS you should import the CSS like this:
 // import '@apideck/file-picker/dist/styles.css'
 
-interface Props {
-  jwt: string
-  token: Session
-}
-
-const IndexPage = ({ jwt, token }: Props) => {
-  const [selectedFile, setSelectedFile] = useState<File>()
-  const [selectedConnection, setSelectedConnection] = useState<Connection>()
-  const [fileToSave, setFileToSave] = useState<any>()
-  const [isDownloading, setIsDownloading] = useState<boolean>(false)
-  const { createSession, session, setSession, isLoading } = useSession()
-  const { addToast } = useToast()
-  const { query, replace } = useRouter()
-  const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false)
-  const [isSaverOpen, setIsSaverOpen] = useState<boolean>(false)
-
-  useEffect(() => {
-    if (token) {
-      setSession({ ...token, jwt })
-    }
-  }, [jwt, setSession, token])
-
-  useEffect(() => {
-    // Open file picker when user is redirected back from vault
-    if (query.openFilePicker) {
-      replace('/', undefined, { shallow: true })
-      setIsPickerOpen(true)
-    }
-  }, [query, replace])
-
-  const handleSelect = (data: File) => {
-    setSelectedFile(data)
-  }
+const IndexPage = () => {
+  const [selectedFile, setSelectedFile] = useState<Blob>()
+  const [isDownloading] = useState<boolean>(false)
 
   const handleDownload = () => {
-    const downloadFile = async (file: File) => {
-      const headers = {
-        'x-apideck-auth-type': 'JWT',
-        'x-apideck-app-id': session?.applicationId || '',
-        'x-apideck-consumer-id': session?.consumerId || '',
-        'x-apideck-service-id': selectedConnection?.service_id as string,
-        Authorization: `Bearer ${jwt}`
-      }
-
-      const response = await fetch(`/api/download?fileId=${file.id}`, { headers })
-      const { external, download_url } = await response.json()
-
-      const downloadResponse = await fetch(download_url, {
-        headers: !external ? headers : undefined
-      })
-
-      return downloadResponse.blob()
+    // console.log(`It's downloading ${selectedFile}`)
+    const reader = new FileReader()
+    reader.onload = () => {
+      console.log(`Extracted file content is : ) ${reader.result}`)
     }
+    reader.readAsText(selectedFile!)
+  }
 
-    if (session && selectedFile?.id) {
-      setIsDownloading(true)
-      downloadFile(selectedFile)
-        .then((blob) => {
-          const objectURL = URL.createObjectURL(blob)
-
-          // Create download link and click it
-          const link = document.createElement('a')
-          link.href = objectURL
-          link.setAttribute('download', selectedFile.name)
-          document.body.appendChild(link)
-          link.click()
-          link?.parentNode?.removeChild(link)
-
-          addToast({
-            title: 'File successfully downloaded',
-            description: selectedFile.name,
-            image: blob.type?.startsWith('image') ? objectURL : undefined,
-            type: 'success',
-            closeAfter: 6000
-          })
-        })
-        .catch((error) => {
-          addToast({
-            title: 'Downloading file failed',
-            description: error?.message ? error.message : error,
-            type: 'error'
-          })
-        })
-        .finally(() => setIsDownloading(false))
-    }
+  const handleFileInput = (e: any) => {
+    setSelectedFile(e?.target?.files?.[0])
   }
 
   return (
@@ -138,9 +64,11 @@ const IndexPage = ({ jwt, token }: Props) => {
       </a>
       <div className="flex items-center justify-center min-h-screen p-4 text-center">
         <div className="p-8 bg-white rounded-xl custom-shadow sm:max-w-lg sm:w-full">
-          <img src="/img/react.svg" className="w-20 h-20 mx-auto -mt-12 rounded-full shadow-lg" />
+          <img src="/img/Specsavers_logo.png" className="h-20 mx-auto -mt-12" />
           <div className="mt-3 text-center sm:mt-5">
-            <h3 className="text-xl font-semibold leading-6 text-gray-800">React File Upload</h3>
+            <h3 className="text-xl font-semibold leading-6 text-gray-800">
+              Remake Dispense Report Upload
+            </h3>
             <div className="mt-2">
               <p className="my-3 text-gray-500">
                 The is a demo for the{' '}
@@ -148,101 +76,42 @@ const IndexPage = ({ jwt, token }: Props) => {
                   Apideck
                 </a>{' '}
                 File Picker component.{' '}
-                {session?.jwt
-                  ? ` Click a button below to open the File Picker or File Saver`
-                  : `First create a session and then you can pick or upload a file`}
-                .
               </p>
               <div className="flex items-center justify-center">
-                {session?.jwt ? (
-                  <Fragment>
-                    <div className="flex space-x-3">
-                      <FilePicker
-                        jwt={session.jwt}
-                        consumerId={session.consumerId}
-                        appId={session.applicationId}
-                        trigger={
-                          <Button
-                            text={selectedFile ? 'Select new file' : 'Select file'}
-                            variant={selectedFile ? 'outline' : 'primary'}
-                          />
-                        }
-                        onSelect={handleSelect}
-                        onConnectionSelect={setSelectedConnection}
-                        open={isPickerOpen}
-                        onClose={() => setIsPickerOpen(false)}
+                <Fragment>
+                  <div className="flex space-x-3">
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <span className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium leading-4 text-white transition duration-300 ease-in-out border border-transparent rounded shadow bg-primary-600 hover:shadow-md active:bg-primary-600 hover:bg-primary-700 focus:shadow-outline-primary dark:bg-gray-800 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-700">
+                        Upload file
+                      </span>
+                      <input
+                        id="file-upload"
+                        name="file-upload"
+                        type="file"
+                        className="sr-only"
+                        onChange={handleFileInput}
                       />
-                      {isSaverOpen ? (
-                        <FilePicker
-                          jwt={session.jwt}
-                          consumerId={session.consumerId}
-                          appId={session.applicationId}
-                          open={true}
-                          onSelect={handleSelect}
-                          onConnectionSelect={setSelectedConnection}
-                          onClose={() => setIsSaverOpen(false)}
-                          fileToSave={fileToSave}
-                        />
-                      ) : (
-                        <label htmlFor="file-upload" className="cursor-pointer">
-                          <span className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium leading-4 text-white transition duration-300 ease-in-out border border-transparent rounded shadow bg-primary-600 hover:shadow-md active:bg-primary-600 hover:bg-primary-700 focus:shadow-outline-primary dark:bg-gray-800 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-700">
-                            Upload file
-                          </span>
-                          <input
-                            id="file-upload"
-                            name="file-upload"
-                            type="file"
-                            className="sr-only"
-                            onChange={(e: any) => {
-                              setFileToSave(e.target?.files[0])
-                              setIsSaverOpen(true)
-                            }}
-                          />
-                        </label>
-                      )}
-                      {isSaverOpen ? (
-                        <Button
-                          text="Upload a file"
-                          variant="outline"
-                          onClick={() => setIsSaverOpen(true)}
-                        />
-                      ) : (
-                        <FilePicker
-                          jwt={session.jwt}
-                          consumerId={session.consumerId}
-                          appId={session.applicationId}
-                          open={isSaverOpen}
-                          onClose={() => setIsSaverOpen(false)}
-                        />
-                      )}
-                    </div>
-                    {selectedFile ? (
-                      <Button
-                        text="Download file"
-                        onClick={handleDownload}
-                        className="ml-3"
-                        isLoading={isDownloading}
-                      />
-                    ) : null}
-                  </Fragment>
-                ) : (
-                  <Button
-                    onClick={createSession}
-                    text="Create session"
-                    isLoading={isLoading}
-                    variant="outline"
-                  />
-                )}
+                    </label>
+                  </div>
+                  {selectedFile ? (
+                    <Button
+                      text="Download file"
+                      onClick={handleDownload}
+                      className="ml-3"
+                      isLoading={isDownloading}
+                    />
+                  ) : null}
+                </Fragment>
               </div>
-              {selectedFile ? (
-                <div className="self-start flex-1 flex-grow mt-4 text-left text-gray-700">
-                  <CodeBlock
-                    title={selectedFile?.name}
-                    code={JSON.stringify(selectedFile, null, 2)}
-                    lang="json"
-                  />
-                </div>
-              ) : null}
+              {/*{selectedFile ? (*/}
+              {/*  <div className="self-start flex-1 flex-grow mt-4 text-left text-gray-700">*/}
+              {/*    <CodeBlock*/}
+              {/*      title={selectedFile?.name}*/}
+              {/*      code={JSON.stringify(selectedFile, null, 2)}*/}
+              {/*      lang="json"*/}
+              {/*    />*/}
+              {/*  </div>*/}
+              {/*) : null}*/}
             </div>
           </div>
         </div>

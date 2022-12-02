@@ -15,7 +15,11 @@ module.exports = config({
         'basier-circle': ['Basier Circle', ...defaultTheme.fontFamily.sans]
       },
       colors: {
-        gray: colors.blueGray
+        gray: colors.blueGray,
+        primary: {
+          600: 'rgb(5 150 105)',
+          700: 'rgb(4 120 87)'
+        }
       }
     }
   },
